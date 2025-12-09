@@ -1,23 +1,57 @@
 "use client"
 
 import { useState } from "react"
-import { Mail, Lock, TrendingUp } from "lucide-react"
+import { Mail, Lock, TrendingUp, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 interface LoginScreenProps {
-  onLogin: () => void
+  onLogin: (email: string, password: string) => boolean
   onSignup: () => void
 }
 
 export function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onLogin()
+    setError("")
+    setIsLoading(true)
+
+    // Validação de campos vazios
+    if (!email.trim()) {
+      setError("Por favor, insira seu email")
+      setIsLoading(false)
+      return
+    }
+
+    if (!password.trim()) {
+      setError("Por favor, insira sua senha")
+      setIsLoading(false)
+      return
+    }
+
+    // Validação de formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setError("Por favor, insira um email válido")
+      setIsLoading(false)
+      return
+    }
+
+    // Simula delay de autenticação
+    setTimeout(() => {
+      const success = onLogin(email, password)
+      if (!success) {
+        setError("Email ou senha incorretos")
+      }
+      setIsLoading(false)
+    }, 500)
   }
 
   return (
@@ -32,13 +66,20 @@ export function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
             <TrendingUp className="w-10 h-10 text-indigo-600" />
           </div>
           <h1 className="text-4xl font-bold text-white mb-2">FinFlow</h1>
-          <p className="text-indigo-100">Controle suas finanças com inteligência</p>
+          <p className="text-indigo-100">Bem-vindo de volta!</p>
         </div>
 
         {/* Login Card */}
         <div className="bg-white rounded-3xl shadow-2xl p-8 backdrop-blur-sm">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Entrar</h2>
           
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-gray-700">Email</Label>
@@ -49,9 +90,12 @@ export function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
                   type="email"
                   placeholder="seu@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    setError("")
+                  }}
                   className="pl-11 h-12 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
-                  required
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -62,31 +106,42 @@ export function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-11 h-12 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
-                  required
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    setError("")
+                  }}
+                  className="pl-11 pr-11 h-12 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
+                  disabled={isLoading}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-2">
                 <input type="checkbox" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
                 <span className="text-gray-600">Lembrar-me</span>
               </label>
               <button type="button" className="text-indigo-600 hover:text-indigo-700 font-medium">
-                Esqueci minha senha
+                Esqueceu a senha?
               </button>
             </div>
 
             <Button 
               type="submit"
-              className="w-full h-12 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              disabled={isLoading}
+              className="w-full h-12 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Entrar
+              {isLoading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
 
@@ -102,11 +157,6 @@ export function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
             </p>
           </div>
         </div>
-
-        {/* Footer */}
-        <p className="text-center text-indigo-100 text-sm mt-6">
-          Seguro • Confiável • Moderno
-        </p>
       </div>
     </div>
   )

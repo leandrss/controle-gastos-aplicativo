@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { ArrowLeft, ShoppingBag, Car, Home, Coffee, Heart, GraduationCap, Smartphone, Plane, Gift, MoreHorizontal, Calendar } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ArrowLeft, ShoppingBag, Car, Home, Coffee, Heart, GraduationCap, Smartphone, Plane, Gift, MoreHorizontal, Calendar, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,6 +18,8 @@ export function TransactionForm({ onBack, onSave }: TransactionFormProps) {
   const [category, setCategory] = useState("")
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [description, setDescription] = useState("")
+  const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   const categories = [
     { id: "food", name: "Alimentação", icon: ShoppingBag, color: "bg-green-500" },
@@ -34,7 +36,76 @@ export function TransactionForm({ onBack, onSave }: TransactionFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave()
+    setError("")
+    setIsLoading(true)
+
+    // Validação de campos
+    if (!amount || parseFloat(amount) <= 0) {
+      setError("Por favor, insira um valor válido")
+      setIsLoading(false)
+      return
+    }
+
+    if (!category) {
+      setError("Por favor, selecione uma categoria")
+      setIsLoading(false)
+      return
+    }
+
+    if (!date) {
+      setError("Por favor, selecione uma data")
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      // Busca dados atuais
+      const currentBalance = parseFloat(localStorage.getItem("finflow_balance") || "0")
+      const currentIncome = parseFloat(localStorage.getItem("finflow_income") || "0")
+      const currentExpenses = parseFloat(localStorage.getItem("finflow_expenses") || "0")
+      const transactions = JSON.parse(localStorage.getItem("finflow_transactions") || "[]")
+
+      // Calcula novos valores
+      const amountValue = parseFloat(amount)
+      let newBalance = currentBalance
+      let newIncome = currentIncome
+      let newExpenses = currentExpenses
+
+      if (type === "income") {
+        newBalance += amountValue
+        newIncome += amountValue
+      } else {
+        newBalance -= amountValue
+        newExpenses += amountValue
+      }
+
+      // Cria nova transação
+      const newTransaction = {
+        id: Date.now().toString(),
+        type,
+        amount: amountValue,
+        category,
+        date,
+        description,
+        createdAt: new Date().toISOString()
+      }
+
+      // Salva no localStorage
+      localStorage.setItem("finflow_balance", newBalance.toString())
+      localStorage.setItem("finflow_income", newIncome.toString())
+      localStorage.setItem("finflow_expenses", newExpenses.toString())
+      localStorage.setItem("finflow_transactions", JSON.stringify([newTransaction, ...transactions]))
+
+      // Simula delay de salvamento
+      setTimeout(() => {
+        setIsLoading(false)
+        onSave()
+      }, 500)
+    } catch (error) {
+      setError("Erro ao salvar transação. Tente novamente.")
+      setIsLoading(false)
+      console.error("Erro ao salvar transação:", error)
+    }
   }
 
   return (
@@ -54,6 +125,7 @@ export function TransactionForm({ onBack, onSave }: TransactionFormProps) {
         {/* Type Toggle */}
         <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-1 flex gap-1">
           <button
+            type="button"
             onClick={() => setType("expense")}
             className={`flex-1 py-3 rounded-xl font-semibold transition-all ${
               type === "expense" 
@@ -64,6 +136,7 @@ export function TransactionForm({ onBack, onSave }: TransactionFormProps) {
             Despesa
           </button>
           <button
+            type="button"
             onClick={() => setType("income")}
             className={`flex-1 py-3 rounded-xl font-semibold transition-all ${
               type === "income" 
@@ -78,39 +151,54 @@ export function TransactionForm({ onBack, onSave }: TransactionFormProps) {
 
       {/* Form */}
       <div className="px-6 -mt-4">
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <p className="text-red-600 text-sm">{error}</p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Amount */}
           <div className="bg-white rounded-3xl p-6 shadow-lg">
             <Label htmlFor="amount" className="text-gray-700 mb-2 block">Valor</Label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-3xl font-bold text-gray-400">R$</span>
+              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-gray-400" />
               <Input
                 id="amount"
                 type="number"
                 step="0.01"
+                min="0.01"
                 placeholder="0,00"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => {
+                  setAmount(e.target.value)
+                  setError("")
+                }}
                 className="pl-16 h-16 text-3xl font-bold border-0 focus:ring-0 bg-transparent"
-                required
+                disabled={isLoading}
               />
             </div>
           </div>
 
           {/* Category */}
           <div className="bg-white rounded-3xl p-6 shadow-lg">
-            <Label className="text-gray-700 mb-4 block">Categoria</Label>
+            <Label className="text-gray-700 mb-4 block">Categoria *</Label>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
               {categories.map((cat) => (
                 <button
                   key={cat.id}
                   type="button"
-                  onClick={() => setCategory(cat.id)}
+                  onClick={() => {
+                    setCategory(cat.id)
+                    setError("")
+                  }}
+                  disabled={isLoading}
                   className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-all ${
                     category === cat.id
                       ? "bg-indigo-50 ring-2 ring-indigo-600"
                       : "bg-gray-50 hover:bg-gray-100"
-                  }`}
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   <div className={`w-12 h-12 ${cat.color} rounded-xl flex items-center justify-center`}>
                     <cat.icon className="w-6 h-6 text-white" />
@@ -130,9 +218,13 @@ export function TransactionForm({ onBack, onSave }: TransactionFormProps) {
                 id="date"
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => {
+                  setDate(e.target.value)
+                  setError("")
+                }}
+                max={new Date().toISOString().split('T')[0]}
                 className="pl-12 h-14 rounded-xl border-gray-200"
-                required
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -146,6 +238,7 @@ export function TransactionForm({ onBack, onSave }: TransactionFormProps) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="min-h-[100px] rounded-xl border-gray-200 resize-none"
+              disabled={isLoading}
             />
           </div>
 
@@ -153,9 +246,10 @@ export function TransactionForm({ onBack, onSave }: TransactionFormProps) {
           <div className="pb-8">
             <Button 
               type="submit"
-              className="w-full h-14 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-2xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+              disabled={isLoading}
+              className="w-full h-14 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-2xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Salvar Transação
+              {isLoading ? "Salvando..." : "Salvar Transação"}
             </Button>
           </div>
         </form>

@@ -1,28 +1,48 @@
 "use client"
 
-import { Plus, TrendingUp, TrendingDown, DollarSign, ShoppingBag, Car, Home, Coffee, Heart, GraduationCap, MoreHorizontal, Menu, User, List, Folder } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react"
+import { Plus, TrendingUp, TrendingDown, Home, User, List, Folder, Menu, Inbox } from "lucide-react"
 
 interface DashboardProps {
   onNavigate: (screen: "dashboard" | "add-transaction" | "categories" | "profile" | "transactions") => void
   onLogout: () => void
+  isFirstAccess: boolean
 }
 
-export function Dashboard({ onNavigate }: DashboardProps) {
-  const transactions = [
-    { id: 1, title: "Supermercado", category: "Alimentação", amount: -150.00, date: "Hoje", icon: ShoppingBag, color: "text-green-600 bg-green-50" },
-    { id: 2, title: "Salário", category: "Receita", amount: 5000.00, date: "Ontem", icon: TrendingUp, color: "text-emerald-600 bg-emerald-50" },
-    { id: 3, title: "Uber", category: "Transporte", amount: -25.50, date: "Ontem", icon: Car, color: "text-blue-600 bg-blue-50" },
-    { id: 4, title: "Aluguel", category: "Casa", amount: -1200.00, date: "2 dias atrás", icon: Home, color: "text-purple-600 bg-purple-50" },
-    { id: 5, title: "Café", category: "Alimentação", amount: -12.00, date: "3 dias atrás", icon: Coffee, color: "text-amber-600 bg-amber-50" },
-  ]
+export function Dashboard({ onNavigate, isFirstAccess }: DashboardProps) {
+  const [balance, setBalance] = useState(0)
+  const [income, setIncome] = useState(0)
+  const [expenses, setExpenses] = useState(0)
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [userName, setUserName] = useState("")
 
-  const categories = [
-    { name: "Alimentação", amount: 450, percentage: 30, color: "bg-green-500" },
-    { name: "Transporte", amount: 280, percentage: 18, color: "bg-blue-500" },
-    { name: "Casa", amount: 1200, percentage: 40, color: "bg-purple-500" },
-    { name: "Lazer", amount: 180, percentage: 12, color: "bg-pink-500" },
-  ]
+  useEffect(() => {
+    // Carrega dados do localStorage
+    try {
+      const storedBalance = parseFloat(localStorage.getItem("finflow_balance") || "0")
+      const storedIncome = parseFloat(localStorage.getItem("finflow_income") || "0")
+      const storedExpenses = parseFloat(localStorage.getItem("finflow_expenses") || "0")
+      const storedTransactions = JSON.parse(localStorage.getItem("finflow_transactions") || "[]")
+      const storedName = localStorage.getItem("finflow_user_name") || "Usuário"
+
+      setBalance(storedBalance)
+      setIncome(storedIncome)
+      setExpenses(storedExpenses)
+      setTransactions(storedTransactions)
+      setUserName(storedName)
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error)
+    }
+  }, [])
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value)
+  }
+
+  const hasTransactions = transactions.length > 0
 
   return (
     <div className="min-h-screen pb-24">
@@ -34,8 +54,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
             <div>
-              <p className="text-indigo-100 text-sm">Bem-vindo de volta</p>
-              <h1 className="text-white text-xl font-bold">João Silva</h1>
+              <p className="text-indigo-100 text-sm">Bem-vindo, {userName.split(' ')[0]}</p>
+              <h1 className="text-white text-xl font-bold">FinFlow</h1>
             </div>
           </div>
           <button 
@@ -49,7 +69,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         {/* Balance Card */}
         <div className="bg-white rounded-3xl p-6 shadow-2xl">
           <p className="text-gray-600 text-sm mb-2">Saldo Total</p>
-          <h2 className="text-4xl font-bold text-gray-900 mb-6">R$ 3.432,50</h2>
+          <h2 className="text-4xl font-bold text-gray-900 mb-6">{formatCurrency(balance)}</h2>
           
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-green-50 rounded-2xl p-4">
@@ -59,7 +79,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 </div>
                 <span className="text-gray-600 text-sm">Receitas</span>
               </div>
-              <p className="text-xl font-bold text-gray-900">R$ 5.000,00</p>
+              <p className="text-xl font-bold text-gray-900">{formatCurrency(income)}</p>
             </div>
             
             <div className="bg-red-50 rounded-2xl p-4">
@@ -69,7 +89,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 </div>
                 <span className="text-gray-600 text-sm">Despesas</span>
               </div>
-              <p className="text-xl font-bold text-gray-900">R$ 1.567,50</p>
+              <p className="text-xl font-bold text-gray-900">{formatCurrency(expenses)}</p>
             </div>
           </div>
         </div>
@@ -77,10 +97,57 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
       {/* Content */}
       <div className="px-6 -mt-20">
-        {/* Spending by Category */}
+        {/* Empty State or Transactions */}
+        {!hasTransactions ? (
+          <div className="bg-white rounded-3xl p-8 shadow-lg mb-6 text-center">
+            <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Inbox className="w-10 h-10 text-indigo-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Comece agora!</h3>
+            <p className="text-gray-600 mb-6">
+              Adicione sua primeira movimentação para começar a controlar suas finanças.
+            </p>
+            <button
+              onClick={() => onNavigate("add-transaction")}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300"
+            >
+              <Plus className="w-5 h-5" />
+              Adicionar Transação
+            </button>
+          </div>
+        ) : (
+          <div className="bg-white rounded-3xl p-6 shadow-lg mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Resumo Financeiro</h3>
+              <button 
+                onClick={() => onNavigate("add-transaction")}
+                className="text-indigo-600 text-sm font-medium hover:text-indigo-700"
+              >
+                + Nova
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-gray-700">Total de Transações</span>
+                <span className="text-gray-900 font-bold">{transactions.length}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl">
+                <span className="text-gray-700">Receitas</span>
+                <span className="text-green-600 font-bold">{formatCurrency(income)}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-red-50 rounded-xl">
+                <span className="text-gray-700">Despesas</span>
+                <span className="text-red-600 font-bold">{formatCurrency(expenses)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Categories Preview - Empty */}
         <div className="bg-white rounded-3xl p-6 shadow-lg mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Gastos por Categoria</h3>
+            <h3 className="text-lg font-bold text-gray-900">Categorias</h3>
             <button 
               onClick={() => onNavigate("categories")}
               className="text-indigo-600 text-sm font-medium hover:text-indigo-700"
@@ -90,17 +157,19 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </div>
           
           <div className="space-y-4">
-            {categories.map((category) => (
+            {[
+              { name: "Alimentação", amount: 0 },
+              { name: "Transporte", amount: 0 },
+              { name: "Casa", amount: 0 },
+              { name: "Lazer", amount: 0 }
+            ].map((category) => (
               <div key={category.name}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-700 font-medium">{category.name}</span>
-                  <span className="text-gray-900 font-bold">R$ {category.amount}</span>
+                  <span className="text-gray-900 font-bold">{formatCurrency(category.amount)}</span>
                 </div>
                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full ${category.color} rounded-full transition-all duration-500`}
-                    style={{ width: `${category.percentage}%` }}
-                  />
+                  <div className="h-full bg-gray-200 rounded-full w-0" />
                 </div>
               </div>
             ))}
@@ -119,24 +188,28 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             </button>
           </div>
           
-          <div className="space-y-3">
-            {transactions.map((transaction) => (
-              <div key={transaction.id} className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-2xl transition-colors cursor-pointer">
-                <div className={`w-12 h-12 ${transaction.color} rounded-2xl flex items-center justify-center flex-shrink-0`}>
-                  <transaction.icon className="w-6 h-6" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900">{transaction.title}</p>
-                  <p className="text-sm text-gray-500">{transaction.category} • {transaction.date}</p>
-                </div>
-                <div className="text-right">
-                  <p className={`font-bold ${transaction.amount > 0 ? 'text-green-600' : 'text-gray-900'}`}>
-                    {transaction.amount > 0 ? '+' : ''}R$ {Math.abs(transaction.amount).toFixed(2)}
-                  </p>
-                </div>
+          {!hasTransactions ? (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                <List className="w-8 h-8 text-gray-300" />
               </div>
-            ))}
-          </div>
+              <p className="text-gray-500 text-sm">Nenhuma transação registrada</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {transactions.slice(0, 5).map((transaction) => (
+                <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                  <div>
+                    <p className="font-medium text-gray-900">{transaction.category}</p>
+                    <p className="text-sm text-gray-500">{new Date(transaction.date).toLocaleDateString('pt-BR')}</p>
+                  </div>
+                  <span className={`font-bold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                    {transaction.type === 'income' ? '+' : '-'} {formatCurrency(transaction.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -183,14 +256,6 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </button>
         </div>
       </div>
-
-      {/* Floating Action Button - Alternative position */}
-      <button 
-        onClick={() => onNavigate("add-transaction")}
-        className="fixed bottom-24 right-6 w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full flex items-center justify-center shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-110 md:hidden"
-      >
-        <Plus className="w-8 h-8 text-white" />
-      </button>
     </div>
   )
 }
